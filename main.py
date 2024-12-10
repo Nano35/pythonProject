@@ -39,8 +39,6 @@ def check_user(user_id):
 
 def add_user(user_id: int, user_name: str, user_surname: str, username: str):
 
-    cursor.execute('')
-
     cursor.execute('INSERT INTO test (user_id, user_name, user_surname, username) VALUES (?, ?, ?, ?)',
                    (user_id, user_name, user_surname, username))
     conn.commit()
