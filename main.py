@@ -11,4 +11,12 @@ Hi there, I am EchoBot.
 I am here to echo your kind words back to you. Just say anything nice and I'll say the exact same thing to you!\
 """)
 
+
+@bot.message_handler(func=lambda message: True)
+def echo_message(message):
+    bot.reply_to(message, """
+    не существует такой команды""")
+
+
+
 bot.infinity_polling()
