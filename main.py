@@ -1,4 +1,5 @@
 import sqlite3
+
 import telebot
 from telebot import types
 
@@ -8,7 +9,9 @@ bot = telebot.TeleBot(config.get_api_key())
 conn = sqlite3.connect('db/python.db', check_same_thread=False)
 cursor = conn.cursor()
 
-child_data = ""
+global fio
+global birthday
+global when_i_birth
 
 STATE_WAITING_FOR_ANSWER = 0
 ANSWER_RECEIVED = 1
@@ -45,9 +48,22 @@ def get_text_messages(message):
        bot.register_next_step_handler(message, add_child_data)
 
 def add_child_data(message):
-    global child_data
-    child_data = message.text
-    bot.reply_to(message, f"ФИО ребенка: {child_data}")
+    fio = message.text
+    bot.reply_to(message, f"ФИО ребенка: {fio}")
+    bot.send_message(message.from_user.id, "Напишите ДР ребенка")
+    bot.register_next_step_handler(message, add_birthday)
+
+def add_birthday(message):
+    birthday = message.text
+    bot.reply_to(message, f"ДР ребенка: {birthday}")
+    bot.send_message(message.from_user.id, "*Мое прошлое*", parse_mode="MarkdownV2")
+    bot.send_message(message.from_user.id, "Напишите информацию о том когда он родился")
+    bot.register_next_step_handler(message, when_i_birth)
+
+def add_when_i_birth(message):
+    when_i_birth = message.text
+
+
 
 
 def check_user(user_id):
