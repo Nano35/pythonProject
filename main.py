@@ -1,5 +1,13 @@
 import sqlite3
 from email.policy import default
+import requests
+import os
+import tempfile
+from docx import Document
+from dotenv import load_dotenv
+from telebot import types
+from docx.shared import Inches
+load_dotenv()
 
 import requests
 
@@ -53,6 +61,7 @@ def get_text_messages(message):
        bot.send_message(message.from_user.id, "Напишите ФИО ребенка")
        bot.register_next_step_handler(message, add_child_data)
 
+
 def add_child_data(message):
     global fio
     fio = message.text
@@ -64,6 +73,7 @@ def add_child_photo(message):
     file = bot.get_file(message.photo[-1].file_id)
     global file_path
     file_path = file.file_path  # Путь к сохраненному файлу который сохраняется в бд
+    global file_url
     file_url = f"https://api.telegram.org/file/bot{config.get_api_key()}/{file_path}" # Реальный путь (можете по нему перейти там в консоли он выводится) НЕ ИСПОЛЬЗОВАТЬ В БД ТАК КАК ПАЛИТСЯ BOT API KEY
     print(file_url)
     response = requests.get(file_url, stream=True)
@@ -98,6 +108,85 @@ def add_my_present(message):
 Расскажите о будущем ребенка \(о том кем он хочет быть, о его будущей семье, о его будущем доме\)""", parse_mode="MarkdownV2")
     bot.register_next_step_handler(message, add_child_db)
 
+
+#СОЗДАНИЕ ДОКУМЕНТА
+def finish(message):
+    chat_id = message.chat.id
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    button = types.KeyboardButton(text="Создать документ word")
+    keyboard.add(button)
+
+    msg = bot.send_message(
+        chat_id,
+        "Нажмите на кнопку, чтобы создать документ",
+        reply_markup=keyboard
+        )
+    bot.register_next_step_handler(msg, intro_text_handler)
+#СОЗДАНИЕ ДОКУМЕНТА
+def intro_text_handler(message):
+    """Обработчик текста"""
+    chat_id = message.chat.id
+    # Генерируем документ и отправляем его пользователю
+    try:
+        document = generate_document()
+        msg = bot.send_document(chat_id, document)
+        bot.register_next_step_handler(msg, intro_text_handler)
+    except Exception as e:
+        bot.send_message(chat_id, "Ошибка генерации документа: " + str(e))
+
+#ДЕЛАЕТ ИЗОБРАЖЕНИЕ ИЗ ССЫЛКИ
+def insert_image_from_url(document, image_url, width=None):
+    """Вставляет изображение в документ docx по URL-ссылке.
+
+    Args:
+        document: Объект Document из библиотеки python-docx.
+        image_url: URL-ссылка на изображение.
+        width: Ширина изображения в дюймах (опционально).
+    """
+
+    try:
+        response = requests.get(image_url, stream=True)
+        response.raise_for_status()
+
+        with open('temp_image.jpg', 'wb') as out_file:
+            for chunk in response.iter_content(chunk_size=8192):
+                out_file.write(chunk)
+
+        document.add_picture('temp_image.jpg', width=Inches(width) if width else None)
+        os.remove('temp_image.jpg')
+
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при загрузке изображения: {e}")
+    except Exception as e:
+        print(f"Ошибка при вставке изображения: {e}")
+#СОЗДАНИЕ ДОКУМЕНТА
+def generate_document():
+    """Генератор Word документа"""
+    try:
+        doc = Document()
+        image_url = file_url
+        doc.add_heading('Книга жизни', level=0)
+        doc.add_paragraph('Это инструмент, который позволяет приемным родителям собрать всю информацию о прошлом их приемного ребенка и его настоящем уже в новой семье и оформить это в виде "Книги жизни" - альбома с текстами и фотографиями')
+        doc.add_heading('Вводная часть:', level=1)
+        doc.add_paragraph(fio, style = 'List Number')
+        doc.add_paragraph(birthday, style = 'List Number')
+        insert_image_from_url(doc, image_url, width=1.25)
+        doc.add_heading('Мое прошлое:', level=1)
+        doc.add_paragraph(when_i_birth)
+        doc.add_heading('Мое настоящее:', level=1)
+        doc.add_paragraph(my_present)
+        doc.add_heading('Мое будущее:', level=1)
+        doc.add_paragraph(my_future)
+        with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as f:
+            document_name = f.name
+            doc.save(document_name)
+            return open(document_name, 'rb')
+    except Exception as e:
+        raise Exception("Ошибка генерации документа: " + str(e))
+
+
+
+
 def add_child_db(message): # Сохраняем path в базу данных
     global my_future
     my_future = message.text
@@ -107,7 +196,8 @@ def add_child_db(message): # Сохраняем path в базу данных
                    (fio, birthday, resume, file_path))  # user_id - ID пользователя из Telegram
     conn.commit()
     conn.close()
-
+    #отсылка на функцию ворда
+    bot.register_next_step_handler(message, finish)
 def check_user(user_id):
     cursor.execute('SELECT 1 FROM test WHERE user_id = ? LIMIT 1', (user_id,))
     result = cursor.fetchone()
@@ -119,4 +209,17 @@ def add_user(user_id: int, user_name: str, user_surname: str, username: str):
                    (user_id, user_name, user_surname, username))
     conn.commit()
 
-bot.infinity_polling()
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == '__main__':
+    bot.polling()
