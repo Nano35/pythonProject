@@ -1,14 +1,12 @@
 import sqlite3
-from email.policy import default
 
 import requests
 
 import telebot
 from telebot import types
 
-import config
-
-bot = telebot.TeleBot(config.get_api_key())
+API_TOKEN = "7272715477:AAGvjBEXoXqX9-5e_X3V5WrOTmcYTHf2ziw"
+bot = telebot.TeleBot(API_TOKEN)
 conn = sqlite3.connect('db/python.db', check_same_thread=False)
 cursor = conn.cursor()
 
@@ -64,7 +62,7 @@ def add_child_photo(message):
     file = bot.get_file(message.photo[-1].file_id)
     global file_path
     file_path = file.file_path  # Путь к сохраненному файлу который сохраняется в бд
-    file_url = f"https://api.telegram.org/file/bot{config.get_api_key()}/{file_path}" # Реальный путь (можете по нему перейти там в консоли он выводится) НЕ ИСПОЛЬЗОВАТЬ В БД ТАК КАК ПАЛИТСЯ BOT API KEY
+    file_url = f"https://api.telegram.org/file/bot{API_TOKEN}/{file_path}" # Реальный путь (можете по нему перейти там в консоли он выводится) НЕ ИСПОЛЬЗОВАТЬ В БД ТАК КАК ПАЛИТСЯ BOT API KEY
     print(file_url)
     response = requests.get(file_url, stream=True)
     response.raise_for_status()  # Проверяем на ошибки
