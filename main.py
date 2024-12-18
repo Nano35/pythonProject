@@ -63,7 +63,7 @@ def add_child_data(message):
 def add_child_photo(message):
     file = bot.get_file(message.photo[-1].file_id)
     global file_path
-    file_path = f"photo_{file.file_id}.jpg"  # Путь к сохраненному файлу который сохраняется в бд
+    file_path = file.file_path  # Путь к сохраненному файлу который сохраняется в бд
     file_url = f"https://api.telegram.org/file/bot{config.get_api_key()}/{file_path}" # Реальный путь (можете по нему перейти там в консоли он выводится) НЕ ИСПОЛЬЗОВАТЬ В БД ТАК КАК ПАЛИТСЯ BOT API KEY
     print(file_url)
     response = requests.get(file_url, stream=True)
